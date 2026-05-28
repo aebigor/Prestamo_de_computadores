@@ -1,0 +1,2006 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Préstamo de Equipos</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+<script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #21263a;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --text: #f0f2f8;
+    --muted: #8892b0;
+    --accent: #4f80ff;
+    --accent2: #7c5af5;
+    --green: #22c55e;
+    --red: #f87171;
+    --amber: #fbbf24;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* NAV */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(15,17,23,0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 2rem; height: 60px; gap: 0.5rem;
+  }
+  .nav-brand {
+    font-weight: 600; font-size: 16px;
+    color: var(--text); margin-right: auto;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .nav-brand .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+  .nav-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 14px; border-radius: 6px;
+    font-family: inherit; font-size: 13px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .nav-btn:hover { border-color: var(--border2); color: var(--text); }
+  .nav-btn.active {
+    background: var(--accent); border-color: var(--accent);
+    color: #fff; font-weight: 500;
+  }
+
+  /* LAYOUT */
+  main { max-width: 860px; margin: 0 auto; padding: 2.5rem 1.5rem; }
+
+  /* SECTION */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* PAGE HEADER */
+  .page-header { margin-bottom: 2rem; }
+  .page-header h1 { font-size: 26px; font-weight: 600; margin-bottom: 6px; }
+  .page-header p { color: var(--muted); font-size: 14px; }
+
+  /* CARD */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .card-title {
+    font-size: 13px; font-weight: 500;
+    color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.08em; margin-bottom: 1rem;
+  }
+
+  /* FORM */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 13px; color: var(--muted); font-weight: 500; }
+  input, select, textarea {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border 0.2s;
+    width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  select option { background: var(--surface2); }
+  textarea { resize: vertical; min-height: 80px; }
+
+  /* FOTO UPLOAD */
+  .foto-zona {
+    border: 2px dashed var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .foto-zona:hover { border-color: var(--accent); background: rgba(79,128,255,0.04); }
+  .foto-zona input[type=file] {
+    position: absolute; inset: 0; opacity: 0;
+    cursor: pointer; width: 100%; height: 100%;
+  }
+  .foto-zona .icon { font-size: 28px; margin-bottom: 8px; }
+  .foto-zona p { font-size: 13px; color: var(--muted); }
+  .fotos-preview {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;
+  }
+  .fotos-preview img {
+    width: 80px; height: 80px; object-fit: cover;
+    border-radius: 6px; border: 1px solid var(--border);
+  }
+
+  /* FIRMA */
+  .firma-wrap { position: relative; }
+  #firmaCanvas {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: crosshair;
+    display: block;
+    width: 100%;
+    touch-action: none;
+  }
+  .firma-controles {
+    display: flex; gap: 8px; margin-top: 8px; justify-content: flex-end;
+  }
+  .btn-firma {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--muted); padding: 5px 12px;
+    border-radius: 6px; font-size: 12px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-firma:hover { border-color: var(--border2); color: var(--text); }
+
+  /* BUTTONS */
+  .btn-row { display: flex; gap: 12px; margin-top: 1.5rem; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px; border-radius: var(--radius-sm);
+    font-family: inherit; font-size: 14px; font-weight: 500;
+    cursor: pointer; border: none; transition: all 0.2s;
+    text-decoration: none;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #3a6aed; transform: translateY(-1px); }
+  .btn-secondary {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn-secondary:hover { border-color: var(--border2); }
+  .btn-danger { background: rgba(248,113,113,0.15); border: 1px solid rgba(248,113,113,0.3); color: var(--red); }
+  .btn-danger:hover { background: rgba(248,113,113,0.25); }
+  .btn-green { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: var(--green); }
+
+  /* STATUS BADGE */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 100px;
+    font-size: 12px; font-weight: 500;
+  }
+  .badge-green { background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+  .badge-red { background: rgba(248,113,113,0.12); color: var(--red); border: 1px solid rgba(248,113,113,0.2); }
+  .badge-amber { background: rgba(251,191,36,0.12); color: var(--amber); border: 1px solid rgba(251,191,36,0.2); }
+
+  /* STATS ROW */
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+  }
+  .stat-card .stat-num { font-size: 32px; font-weight: 600; font-family: 'DM Mono', monospace; }
+  .stat-card .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead { border-bottom: 1px solid var(--border); }
+  th { padding: 10px 12px; text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* TOAST */
+  #toast {
+    position: fixed; bottom: 2rem; right: 2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 18px;
+    font-size: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    transform: translateY(100px); opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 999;
+    max-width: 320px;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.success { border-color: rgba(34,197,94,0.4); color: var(--green); }
+  #toast.error { border-color: rgba(248,113,113,0.4); color: var(--red); }
+
+  /* PDF PREVIEW HIDDEN */
+  #pdfPreview {
+    position: fixed; left: -9999px; top: 0;
+    width: 794px;
+    background: #fff; color: #111;
+    font-family: 'DM Sans', sans-serif;
+    padding: 48px;
+  }
+
+  /* INVENTARIO */
+  .inv-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 2rem; }
+  .scanner-box { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; position: relative; min-height: 200px; display: flex; align-items: center; justify-content: center; }
+  .scanner-box video { width: 100%; display: block; }
+  .scanner-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  .scanner-frame { width: 200px; height: 120px; border: 2px solid var(--accent); border-radius: 8px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); position: relative; }
+  .scanner-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--accent); opacity: 0.8; animation: scan 1.8s ease-in-out infinite; }
+  @keyframes scan { 0%,100%{top:0} 50%{top:calc(100% - 2px)} }
+  .barcode-result-box { background: rgba(79,128,255,0.08); border: 1px solid rgba(79,128,255,0.25); border-radius: var(--radius-sm); padding: 10px 14px; font-family: 'DM Mono',monospace; font-size: 15px; color: var(--accent); margin-top: 10px; min-height: 44px; display: flex; align-items: center; gap: 10px; }
+  .barcode-preview { background: #fff; border-radius: var(--radius-sm); padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 12px; }
+  .barcode-preview svg { max-width: 100%; }
+  .mov-badge-entrada { background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+  .mov-badge-salida  { background: rgba(248,113,113,0.12); color: var(--red); border: 1px solid rgba(248,113,113,0.2); }
+  .tabs { display: flex; gap: 6px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .tab-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 7px 16px; border-radius: 6px; font-family: inherit; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .inv-section { display: none; }
+  .inv-section.active { display: block; }
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 200; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .modal-backdrop.open { opacity: 1; pointer-events: all; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; width: 480px; max-width: 95vw; transform: translateY(20px); transition: transform 0.2s; }
+  .modal-backdrop.open .modal { transform: translateY(0); }
+  .modal h2 { font-size: 18px; font-weight: 600; margin-bottom: 1.5rem; }
+
+  /* TOGGLE SWITCH */
+  .toggle-switch { position: relative; display: inline-block; width: 42px; height: 24px; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 24px; transition: 0.3s;
+  }
+  .toggle-slider:before {
+    content: ""; position: absolute;
+    height: 16px; width: 16px; left: 3px; bottom: 3px;
+    background: var(--muted); border-radius: 50%; transition: 0.3s;
+  }
+  .toggle-switch input:checked + .toggle-slider { background: var(--accent); border-color: var(--accent); }
+  .toggle-switch input:checked + .toggle-slider:before { background: #fff; transform: translateX(18px); }
+
+  /* CATEGORIAS */
+  .cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .cat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.25rem;
+    display: flex; flex-direction: column; gap: 8px;
+    transition: border-color 0.2s;
+  }
+  .cat-card:hover { border-color: var(--border2); }
+  .cat-card .cat-icon { font-size: 28px; }
+  .cat-card .cat-nombre { font-weight: 600; font-size: 15px; }
+  .cat-card .cat-desc { font-size: 12px; color: var(--muted); }
+  .cat-card .cat-actions { display: flex; gap: 6px; margin-top: 4px; }
+  .cat-empty { text-align: center; padding: 3rem; color: var(--muted); font-size: 14px; }
+
+
+  /* ===== LOGIN ===== */
+  #login-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .login-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 2.5rem 2rem;
+    width: 100%; max-width: 380px;
+    display: flex; flex-direction: column; gap: 1.2rem;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  }
+  .login-logo {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: 20px; margin-bottom: 0.5rem;
+  }
+  .login-logo .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  .login-subtitle { font-size: 13px; color: var(--muted); margin-top: -0.8rem; }
+  .login-box input {
+    background: var(--surface2); border: 1px solid var(--border2);
+    color: var(--text); border-radius: 8px; padding: 10px 14px;
+    font-size: 15px; font-family: inherit; width: 100%;
+  }
+  .login-box input:focus { outline: none; border-color: var(--accent); }
+  .login-err { color: var(--red); font-size: 13px; display: none; }
+  #logout-btn {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--muted); padding: 5px 12px; border-radius: 6px;
+    font-size: 12px; cursor: pointer; margin-left: 8px; transition: all 0.2s;
+  }
+  #logout-btn:hover { border-color: var(--red); color: var(--red); }
+
+  /* ===== HISTORIAL EQUIPO ===== */
+  .hist-timeline { display: flex; flex-direction: column; gap: 0; }
+  .hist-item {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .hist-item:last-child { border-bottom: none; }
+  .hist-dot {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0; margin-top: 2px;
+  }
+  .hist-dot.Prestado    { background: rgba(79,128,255,0.15); }
+  .hist-dot.Devuelto    { background: rgba(34,197,94,0.15);  }
+  .hist-dot.Dañado      { background: rgba(248,113,113,0.15);}
+  .hist-dot.Mantenimiento{ background: rgba(251,191,36,0.15);}
+  .hist-dot.Creado      { background: rgba(124,90,245,0.15); }
+  .hist-dot.default     { background: var(--surface2); }
+  .hist-body { flex: 1; }
+  .hist-accion { font-weight: 600; font-size: 14px; }
+  .hist-meta   { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .hist-obs    { font-size: 12px; color: var(--muted); font-style: italic; margin-top: 4px; }
+  .modal-hist  { max-width: 540px; }
+
+  @media (max-width: 600px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: 1fr; }
+    .inv-stats { grid-template-columns: 1fr 1fr; }
+    nav { padding: 0 1rem; gap: 4px; }
+    .nav-btn { padding: 5px 10px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo"><div class="dot"></div> Préstamo de Equipos</div>
+    <p class="login-subtitle">Sistema de gestión de activos — GIMSAU</p>
+    <input type="text" id="login-user" placeholder="Usuario" autocomplete="username">
+    <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn btn-primary" onclick="doLogin()" style="width:100%;padding:11px;">Ingresar →</button>
+    <div class="login-err" id="login-err">Usuario o contraseña incorrectos</div>
+  </div>
+</div>
+
+
+<nav>
+  <div class="nav-brand">
+    <div class="dot"></div>
+    Préstamo de Equipos
+  </div>
+  <button id="logout-btn" onclick="doLogout()">⎋ Salir</button>
+  <button class="nav-btn active" onclick="showSection('entrega')">📤 Entrega</button>
+  <button class="nav-btn" onclick="showSection('devolucion')">📥 Devolución</button>
+  <button class="nav-btn" onclick="showSection('informe')">📊 Informe</button>
+  <button class="nav-btn" onclick="showSection('inventario')">📦 Inventario</button>
+  <button class="nav-btn" onclick="showSection('categorias')">🏷 Categorías</button>
+</nav>
+
+<main>
+
+  <!-- ===== ENTREGA ===== -->
+  <div id="sec-entrega" class="section active">
+    <div class="page-header">
+      <h1>Formato de Entrega de Equipo</h1>
+      <p>Diligencia los datos para registrar la entrega del portátil al docente.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Información del Equipo</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>N° de Portátil / Serial</label>
+          <input type="text" id="e-serial" placeholder="Ej: LPT-2024-001">
+        </div>
+        <div class="form-group">
+          <label>Marca / Modelo</label>
+          <input type="text" id="e-modelo" placeholder="Ej: Lenovo IdeaPad 3">
+        </div>
+        <div class="form-group">
+          <label>Estado del Equipo</label>
+          <select id="e-estado">
+            <option value="Bueno">Bueno</option>
+            <option value="Regular">Regular</option>
+            <option value="Con daños menores">Con daños menores</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Fecha de Entrega</label>
+          <input type="date" id="e-fecha">
+        </div>
+        <div class="form-group full">
+          <label>Observaciones del equipo</label>
+          <textarea id="e-obs" placeholder="Rayaduras, teclas dañadas, etc..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Información del Docente</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nombre Completo</label>
+          <input type="text" id="e-nombre" placeholder="Nombre del docente">
+        </div>
+        <div class="form-group">
+          <label>Cédula / Identificación</label>
+          <input type="text" id="e-cedula" placeholder="Número de documento">
+        </div>
+        <div class="form-group">
+          <label>Asignatura / Área</label>
+          <input type="text" id="e-asignatura" placeholder="Ej: Matemáticas">
+        </div>
+        <div class="form-group">
+          <label>Teléfono de contacto</label>
+          <input type="text" id="e-tel" placeholder="Ej: 310 000 0000">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Fotos del Equipo (Entrega)</div>
+      <div class="foto-zona" id="fotoZonaEntrega">
+        <input type="file" accept="image/*" multiple onchange="handleFotos(this,'fotosEntrega','previewEntrega')">
+        <div class="icon">📷</div>
+        <p>Haz clic o arrastra fotos del equipo aquí</p>
+        <p style="font-size:12px; margin-top:4px;">JPG, PNG — múltiples archivos</p>
+      </div>
+      <div class="fotos-preview" id="previewEntrega"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Firma del Docente</div>
+      <p style="font-size:13px; color:var(--muted); margin-bottom:12px;">Firme en el recuadro de abajo con el dedo o el cursor.</p>
+      <canvas id="firmaCanvas" width="760" height="180"></canvas>
+      <div class="firma-controles">
+        <button class="btn-firma" onclick="limpiarFirma()">🗑 Borrar firma</button>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="registrarEntrega()">✅ Registrar Entrega</button>
+      <button class="btn btn-secondary" onclick="descargarPDF('entrega')">📄 Descargar PDF</button>
+      <button class="btn btn-secondary" onclick="limpiarFormEntrega()">🔄 Limpiar</button>
+    </div>
+  </div>
+
+  <!-- ===== DEVOLUCIÓN ===== -->
+  <div id="sec-devolucion" class="section">
+    <div class="page-header">
+      <h1>Formato de Devolución de Equipo</h1>
+      <p>Registra el retorno del portátil e inspecciona su estado.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Buscar Registro de Entrega</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>N° de Portátil / Serial</label>
+          <input type="text" id="d-serial" placeholder="Ingresa el serial del equipo" oninput="buscarEquipo()">
+        </div>
+        <div class="form-group">
+          <label>Cédula del Docente</label>
+          <input type="text" id="d-cedula" placeholder="Cédula del docente" oninput="buscarEquipo()">
+        </div>
+      </div>
+      <div id="equipoEncontrado" style="display:none;" class="card" style="margin-top:1rem; background:var(--surface2);">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Estado en la Devolución</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Estado al devolver</label>
+          <select id="d-estado">
+            <option value="Bueno">Bueno</option>
+            <option value="Regular">Regular</option>
+            <option value="Con daños">Con daños</option>
+            <option value="Dañado gravemente">Dañado gravemente</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Fecha de Devolución</label>
+          <input type="date" id="d-fecha">
+        </div>
+        <div class="form-group full">
+          <label>Observaciones al recibir</label>
+          <textarea id="d-obs" placeholder="Describe el estado en que se recibe el equipo..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Fotos del Equipo (Devolución)</div>
+      <div class="foto-zona">
+        <input type="file" accept="image/*" multiple onchange="handleFotos(this,'fotosDevolucion','previewDevolucion')">
+        <div class="icon">📷</div>
+        <p>Fotos al momento de recibir el equipo</p>
+      </div>
+      <div class="fotos-preview" id="previewDevolucion"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Firma de Recepción</div>
+      <canvas id="firmaCanvasDev" width="760" height="180"></canvas>
+      <div class="firma-controles">
+        <button class="btn-firma" onclick="limpiarFirma('dev')">🗑 Borrar firma</button>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="registrarDevolucion()">✅ Registrar Devolución</button>
+      <button class="btn btn-secondary" onclick="descargarPDF('devolucion')">📄 Descargar PDF</button>
+    </div>
+  </div>
+
+  <!-- ===== INFORME ===== -->
+  <div id="sec-informe" class="section">
+    <div class="page-header">
+      <h1>Informe de Equipos</h1>
+      <p>Resumen de portátiles entregados, devueltos y en préstamo activo.</p>
+    </div>
+
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card">
+        <div class="stat-num" id="stat-total" style="color:var(--accent)">0</div>
+        <div class="stat-label">Total de Entregas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-activos" style="color:var(--amber)">0</div>
+        <div class="stat-label">En Préstamo Activo</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-devueltos" style="color:var(--green)">0</div>
+        <div class="stat-label">Devueltos</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+        <div class="card-title" style="margin:0">Registros</div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="filtroTabla" placeholder="Buscar..." style="width:180px;" oninput="filtrarTabla()">
+          <button class="btn btn-secondary" style="padding:7px 12px;font-size:13px;" onclick="exportarCSV()">📥 CSV</button>
+          <button class="btn btn-secondary" style="padding:7px 12px;font-size:13px;" onclick="descargarPDF('informe')">📄 PDF</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="tablaRegistros">
+          <thead>
+            <tr>
+              <th>Serial</th>
+              <th>Modelo</th>
+              <th>Docente</th>
+              <th>Asignatura</th>
+              <th>Entrega</th>
+              <th>Estado</th>
+              <th>Situación</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyRegistros">
+            <tr><td colspan="8" style="text-align:center; color:var(--muted); padding:2rem;">No hay registros aún</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ===== CATEGORÍAS ===== -->
+  <div id="sec-categorias" class="section">
+    <div class="page-header">
+      <h1>Gestión de Categorías</h1>
+      <p>Crea y administra las categorías de tu inventario. Úsalas para clasificar ítems como Portátiles, Tablets, Cables, etc.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Nueva Categoría</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nombre de la categoría</label>
+          <input type="text" id="cat-nombre" placeholder="Ej: Portátiles, Tablets, Cables HDMI...">
+        </div>
+        <div class="form-group">
+          <label>Ícono (emoji)</label>
+          <input type="text" id="cat-icono" placeholder="Ej: 💻 📱 🖱️ 🔌" maxlength="4">
+        </div>
+        <div class="form-group full">
+          <label>Descripción (opcional)</label>
+          <input type="text" id="cat-desc" placeholder="Breve descripción de esta categoría">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="guardarCategoria()">✅ Guardar Categoría</button>
+        <button class="btn btn-secondary" onclick="limpiarFormCat()">🔄 Limpiar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px;">
+        <div class="card-title" style="margin:0">Categorías registradas</div>
+        <input type="text" id="cat-filtro" placeholder="Buscar..." style="width:180px;" oninput="renderCategorias()">
+      </div>
+      <div id="cat-grid-container" class="cat-grid">
+        <div class="cat-empty">No hay categorías aún. ¡Crea la primera arriba!</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ===== INVENTARIO ===== -->
+  <div id="sec-inventario" class="section">
+    <div class="page-header">
+      <h1>Inventario de Tecnología</h1>
+      <p>Control de stock, entradas, salidas y códigos de barras de tus equipos.</p>
+    </div>
+
+    <div class="inv-stats">
+      <div class="stat-card">
+        <div class="stat-num" id="inv-stat-items" style="color:var(--accent)">0</div>
+        <div class="stat-label">Ítems registrados</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="inv-stat-disp" style="color:var(--green)">0</div>
+        <div class="stat-label">Unidades disponibles</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="inv-stat-entradas" style="color:var(--amber)">0</div>
+        <div class="stat-label">Entradas (hoy)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="inv-stat-salidas" style="color:var(--red)">0</div>
+        <div class="stat-label">Salidas (hoy)</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="invTab('stock','this')">📋 Stock</button>
+      <button class="tab-btn" onclick="invTab('nuevo','this')">➕ Nuevo ítem</button>
+      <button class="tab-btn" onclick="invTab('movimiento','this')">🔄 Movimiento</button>
+      <button class="tab-btn" onclick="invTab('scanner','this')">📷 Lector</button>
+      <button class="tab-btn" onclick="invTab('generar','this')">🏷 Generar código</button>
+    </div>
+
+    <!-- TAB STOCK -->
+    <div class="inv-section active" id="invtab-stock">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px;">
+          <div class="card-title" style="margin:0">Ítems en inventario</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <input type="text" id="inv-filtro" placeholder="Buscar..." style="width:160px;" oninput="renderInvTabla()">
+            <select id="inv-filtro-cat" style="width:140px;" onchange="renderInvTabla()">
+              <option value="">Todas las categorías</option>
+            </select>
+            <button class="btn btn-secondary" style="padding:7px 12px;font-size:13px;" onclick="exportarInvExcel()">📥 Excel</button>
+            <button class="btn btn-secondary" style="padding:7px 12px;font-size:13px;" onclick="exportarMovExcel()">📥 Movimientos</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Código</th><th>Nombre</th><th>Categoría</th>
+                <th>Cant. Total</th><th>Disponible</th><th>Estado</th><th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="inv-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card" id="inv-hist-card" style="display:none;">
+        <div class="card-title">Historial de movimientos</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Fecha</th><th>Ítem</th><th>Tipo</th><th>Cantidad</th><th>Referencia</th><th>Responsable</th><th>Obs.</th></tr></thead>
+            <tbody id="mov-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB NUEVO ITEM -->
+    <div class="inv-section" id="invtab-nuevo">
+      <div class="card">
+        <div class="card-title">Registrar nuevo ítem</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Nombre del equipo / ítem</label>
+            <input type="text" id="ni-nombre" placeholder="Ej: Portátil HP 240 G8">
+          </div>
+          <div class="form-group">
+            <label>Categoría</label>
+            <select id="ni-cat">
+              <option value="">— Selecciona categoría —</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex-wrap:wrap;">
+              <span>¿Este ítem tiene serial individual? (portátiles, monitores…)</span>
+              <span style="margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)">
+                No
+                <label class="toggle-switch">
+                  <input type="checkbox" id="ni-requiere-serial" onchange="toggleSerialMode()">
+                  <span class="toggle-slider"></span>
+                </label>
+                Sí
+              </span>
+            </label>
+          </div>
+          <div class="form-group" id="ni-cant-group">
+            <label>Cantidad inicial (stock genérico)</label>
+            <input type="number" id="ni-cant" min="0" value="1">
+          </div>
+          <div class="form-group full" id="ni-serial-group" style="display:none;">
+            <label>Seriales (uno por línea o separados por coma)</label>
+            <textarea id="ni-seriales" style="min-height:80px;" placeholder="SN-001
+SN-002
+SN-003"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Código (deja vacío para autogenerar)</label>
+            <input type="text" id="ni-codigo" placeholder="Autogenerado si está vacío">
+          </div>
+          <div class="form-group">
+            <label>Marca</label>
+            <input type="text" id="ni-marca" placeholder="Ej: HP, Lenovo, Dell">
+          </div>
+          <div class="form-group">
+            <label>Modelo</label>
+            <input type="text" id="ni-modelo" placeholder="Ej: 240 G8, IdeaPad 3">
+          </div>
+          <div class="form-group full">
+            <label>Descripción / observaciones</label>
+            <textarea id="ni-desc" placeholder="Características, especificaciones..."></textarea>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="agregarItem()">✅ Agregar al inventario</button>
+          <button class="btn btn-secondary" onclick="limpiarNuevoItem()">🔄 Limpiar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB MOVIMIENTO -->
+    <div class="inv-section" id="invtab-movimiento">
+      <div class="card">
+        <div class="card-title">Registrar entrada / salida</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Ítem</label>
+            <select id="mov-item">
+              <option value="">— Selecciona ítem —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Tipo de movimiento</label>
+            <select id="mov-tipo">
+              <option value="entrada">📥 Entrada (ingresa stock)</option>
+              <option value="salida">📤 Salida (sale stock)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Cantidad</label>
+            <input type="number" id="mov-cant" min="1" value="1">
+          </div>
+          <div class="form-group">
+            <label>Responsable</label>
+            <input type="text" id="mov-resp" placeholder="Nombre de quien registra">
+          </div>
+          <div class="form-group">
+            <label>Referencia / N° documento</label>
+            <input type="text" id="mov-ref" placeholder="Ej: Factura 001, Préstamo...">
+          </div>
+          <div class="form-group">
+            <label>Fecha</label>
+            <input type="date" id="mov-fecha">
+          </div>
+          <div class="form-group full">
+            <label>Observaciones</label>
+            <textarea id="mov-obs" style="min-height:60px;" placeholder="Motivo del movimiento..."></textarea>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="registrarMovimiento()">✅ Registrar movimiento</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB SCANNER -->
+    <div class="inv-section" id="invtab-scanner">
+      <div class="card">
+        <div class="card-title">Lector de código de barras / QR</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:1rem;">Activa la cámara para escanear un código y autocompletar el ítem en movimientos.</p>
+        <div style="display:flex;gap:10px;margin-bottom:1rem;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="iniciarScanner()">📷 Activar cámara</button>
+          <button class="btn btn-secondary" onclick="detenerScanner()">⏹ Detener</button>
+          <button class="btn btn-secondary" onclick="escanearArchivo()">🖼 Escanear imagen</button>
+          <input type="file" id="scan-file-input" accept="image/*" style="display:none" onchange="procesarImagenBarcode(this)">
+        </div>
+        <div class="scanner-box" id="scannerBox">
+          <video id="scannerVideo" autoplay muted playsinline></video>
+          <div class="scanner-overlay">
+            <div class="scanner-frame"><div class="scanner-line"></div></div>
+          </div>
+          <div id="scannerPlaceholder" style="color:var(--muted);font-size:13px;padding:2rem;text-align:center;">
+            📷 Cámara inactiva — presiona "Activar cámara"
+          </div>
+        </div>
+        <div class="barcode-result-box" id="scanResult">
+          <span style="color:var(--muted)">Resultado aparecerá aquí...</span>
+        </div>
+        <div id="scanItemInfo" style="margin-top:12px;display:none;"></div>
+      </div>
+    </div>
+
+    <!-- TAB GENERAR CÓDIGO -->
+    <div class="inv-section" id="invtab-generar">
+      <div class="card">
+        <div class="card-title">Generar código de barras</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Texto / código a generar</label>
+            <input type="text" id="gen-texto" placeholder="Ej: LPT-2024-001" oninput="generarBarcode()">
+          </div>
+          <div class="form-group">
+            <label>Formato</label>
+            <select id="gen-formato" onchange="generarBarcode()">
+              <option value="CODE128">CODE128 (recomendado)</option>
+              <option value="EAN13">EAN-13</option>
+              <option value="CODE39">CODE39</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Ítem del inventario (opcional)</label>
+            <select id="gen-item" onchange="usarCodigoItem()">
+              <option value="">— Seleccionar ítem —</option>
+            </select>
+          </div>
+        </div>
+        <div class="barcode-preview" id="barcodePreview" style="display:none;">
+          <svg id="barcodeResult"></svg>
+          <p id="barcodeLabel" style="font-size:12px;color:#666;font-family:'DM Mono',monospace;"></p>
+          <button class="btn btn-primary" onclick="descargarBarcode()" style="margin-top:8px;">⬇ Descargar PNG</button>
+        </div>
+        <div id="barcodeError" style="display:none;margin-top:12px;padding:10px;border-radius:6px;background:rgba(248,113,113,0.1);color:var(--red);font-size:13px;"></div>
+      </div>
+    </div>
+
+  </div><!-- end sec-inventario -->
+
+
+  <!-- MODAL HISTORIAL EQUIPO -->
+  <div class="modal-backdrop" id="modalHistorial">
+    <div class="modal modal-hist">
+      <h2 id="hist-titulo">Historial del equipo</h2>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:1rem;" id="hist-subtitulo"></div>
+      <div id="hist-timeline" class="hist-timeline"></div>
+      <div class="btn-row" style="margin-top:1rem;">
+        <button class="btn btn-secondary" onclick="cerrarModal('modalHistorial')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL EDITAR ITEM -->
+  <div class="modal-backdrop" id="modalEditItem">
+    <div class="modal">
+      <h2>Editar ítem</h2>
+      <input type="hidden" id="edit-id">
+      <div class="form-grid" style="grid-template-columns:1fr;">
+        <div class="form-group"><label>Nombre</label><input type="text" id="edit-nombre"></div>
+        <div class="form-group"><label>Categoría</label><input type="text" id="edit-cat"></div>
+        <div class="form-group"><label>Cantidad total</label><input type="number" id="edit-cant" min="0"></div>
+        <div class="form-group"><label>Descripción</label><textarea id="edit-desc" style="min-height:60px;"></textarea></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="guardarEdicion()">💾 Guardar</button>
+        <button class="btn btn-secondary" onclick="cerrarModal('modalEditItem')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+<!-- PDF OCULTO -->
+<div id="pdfPreview"></div>
+<div id="toast"></div>
+
+<script>
+// ===== STATE =====
+let registros  = JSON.parse(localStorage.getItem('equipos_registros') || '[]');
+let inventario  = JSON.parse(localStorage.getItem('inv_items') || '[]');
+let movimientos = JSON.parse(localStorage.getItem('inv_movimientos') || '[]');
+let scannerActive = false;
+let scannerStream = null;
+let scannerInterval = null;
+let fotosEntrega = [];
+let fotosDevolucion = [];
+let firmaData = null;
+let firmaDataDev = null;
+
+
+// ===== LOGIN =====
+const AUTH_USER = 'admin';
+const AUTH_PASS = 'Gimsau2026';
+
+function checkLogin() {
+  const ok = sessionStorage.getItem('auth_ok');
+  const overlay = document.getElementById('login-overlay');
+  if (ok === '1') { overlay.style.display = 'none'; }
+  else { overlay.style.display = 'flex'; }
+}
+
+function doLogin() {
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pass').value;
+  if (u === AUTH_USER && p === AUTH_PASS) {
+    sessionStorage.setItem('auth_ok', '1');
+    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('login-err').style.display = 'none';
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+    document.getElementById('login-pass').value = '';
+    document.getElementById('login-pass').focus();
+  }
+}
+
+function doLogout() {
+  sessionStorage.removeItem('auth_ok');
+  document.getElementById('login-overlay').style.display = 'flex';
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+}
+
+// ===== HISTORIAL POR EQUIPO =====
+async function verHistorialItem(itemId) {
+  const item = inventario.find(i => i.id === itemId);
+  if (!item) return;
+
+  document.getElementById('hist-titulo').textContent = item.nombre;
+  document.getElementById('hist-subtitulo').textContent =
+    (item.categoria ? item.categoria + ' · ' : '') +
+    (item.codigo || '') +
+    (item.requiereSerial ? ' · Con serial' : ' · Stock genérico');
+
+  const container = document.getElementById('hist-timeline');
+  container.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:1rem;">Cargando historial…</div>';
+  document.getElementById('modalHistorial').classList.add('active');
+
+  // Build history from registros (entregas/devoluciones) matching this item
+  // Match by nombre, codigo, or serial
+  const eventos = [];
+
+  // From legacy registros
+  registros.forEach(r => {
+    const match = (r.serial && item.codigo && r.serial === item.codigo) ||
+                  (r.nombre_equipo && r.nombre_equipo === item.nombre) ||
+                  (r.serial && item.activos && item.activos.some(a => a.serial === r.serial));
+    if (!match) return;
+    if (r.fecha_entrega) eventos.push({
+      fecha: r.fecha_entrega,
+      accion: 'Prestado',
+      responsable: r.nombre_docente || r.docente,
+      obs: `Entregado a ${r.nombre_docente || r.docente}${r.asignatura ? ' — ' + r.asignatura : ''}. Estado: ${r.estado_entrega || ''}`,
+    });
+    if (r.fecha_devolucion) eventos.push({
+      fecha: r.fecha_devolucion,
+      accion: 'Devuelto',
+      responsable: r.nombre_docente || r.docente,
+      obs: `Devuelto por ${r.nombre_docente || r.docente}. Estado: ${r.estado_devolucion || ''}${r.obs_devolucion ? ' — ' + r.obs_devolucion : ''}`,
+    });
+  });
+
+  // From movimientos del inventario
+  movimientos.filter(m => m.itemId === itemId || m.itemNombre === item.nombre).forEach(m => {
+    eventos.push({
+      fecha: m.fecha,
+      accion: m.tipo === 'entrada' ? 'Entrada stock' : 'Salida stock',
+      responsable: m.responsable || 'Sistema',
+      obs: `Cantidad: ${m.cantidad}${m.referencia ? ' · ' + m.referencia : ''}${m.obs ? ' — ' + m.obs : ''}`,
+    });
+  });
+
+  // Try backend historial if item has activos with ids
+  if (item.requiereSerial && item.activos && item.activos.length > 0) {
+    for (const activo of item.activos) {
+      if (!activo.id) continue;
+      try {
+        const res = await fetch(`/activos/${activo.id}/historial`);
+        if (res.ok) {
+          const hist = await res.json();
+          hist.forEach(h => eventos.push({
+            fecha: h.fecha,
+            accion: h.accion,
+            responsable: h.responsable,
+            obs: `Serial: ${activo.serial}${h.observacion ? ' — ' + h.observacion : ''}`,
+          }));
+        }
+      } catch(e) {}
+    }
+  }
+
+  // Sort newest first
+  eventos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+  if (eventos.length === 0) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:2rem;">No hay historial registrado para este equipo.</div>';
+    return;
+  }
+
+  const iconos = { 'Prestado':'📤', 'Devuelto':'📥', 'Dañado':'⚠️', 'Mantenimiento':'🔧', 'Creado':'✅', 'Entrada stock':'📦', 'Salida stock':'📤' };
+
+  container.innerHTML = eventos.map(ev => {
+    const fecha = new Date(ev.fecha);
+    const fechaStr = isNaN(fecha) ? ev.fecha : fecha.toLocaleDateString('es-CO', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    const cls = ev.accion.split(' ')[0];
+    const icono = iconos[ev.accion] || '🔹';
+    return `<div class="hist-item">
+      <div class="hist-dot ${cls}" title="${ev.accion}">${icono}</div>
+      <div class="hist-body">
+        <div class="hist-accion">${ev.accion}</div>
+        <div class="hist-meta">${fechaStr}${ev.responsable ? ' · ' + ev.responsable : ''}</div>
+        ${ev.obs ? '<div class="hist-obs">' + ev.obs + '</div>' : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', () => {
+  checkLogin();
+  document.getElementById('e-fecha').valueAsDate = new Date();
+  document.getElementById('d-fecha').valueAsDate = new Date();
+  initFirma('firmaCanvas', 'entrega');
+  initFirma('firmaCanvasDev', 'dev');
+  actualizarTabla();
+  actualizarStats();
+});
+
+// ===== NAV =====
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (id === 'informe') { actualizarTabla(); actualizarStats(); }
+  if (id === 'categorias') { renderCategorias(); }
+  if (id === 'inventario') { poblarSelectCat(); actualizarInvStats(); }
+}
+
+// ===== FIRMA =====
+function initFirma(canvasId, tipo) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth || 760;
+  let drawing = false;
+  let lastX, lastY;
+
+  const getPos = (e) => {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: (src.clientX - r.left) * (canvas.width / r.width), y: (src.clientY - r.top) * (canvas.height / r.height) };
+  };
+
+  canvas.addEventListener('mousedown', e => { drawing = true; const p = getPos(e); lastX = p.x; lastY = p.y; });
+  canvas.addEventListener('mousemove', e => {
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y);
+    ctx.strokeStyle = '#4f80ff'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.stroke();
+    lastX = p.x; lastY = p.y;
+  });
+  canvas.addEventListener('mouseup', () => { drawing = false; saveFirma(canvasId, tipo); });
+  canvas.addEventListener('mouseleave', () => drawing = false);
+
+  canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing = true; const p = getPos(e); lastX = p.x; lastY = p.y; });
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault(); if (!drawing) return;
+    const p = getPos(e);
+    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y);
+    ctx.strokeStyle = '#4f80ff'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.stroke();
+    lastX = p.x; lastY = p.y;
+  });
+  canvas.addEventListener('touchend', () => { drawing = false; saveFirma(canvasId, tipo); });
+}
+
+function saveFirma(canvasId, tipo) {
+  const data = document.getElementById(canvasId).toDataURL();
+  if (tipo === 'entrega') firmaData = data;
+  else firmaDataDev = data;
+}
+
+function limpiarFirma(tipo) {
+  const canvasId = tipo === 'dev' ? 'firmaCanvasDev' : 'firmaCanvas';
+  const canvas = document.getElementById(canvasId);
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  if (tipo === 'dev') firmaDataDev = null;
+  else firmaData = null;
+}
+
+// ===== FOTOS =====
+function handleFotos(input, arrName, previewId) {
+  const arr = arrName === 'fotosEntrega' ? fotosEntrega : fotosDevolucion;
+  const preview = document.getElementById(previewId);
+  Array.from(input.files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      arr.push(e.target.result);
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      preview.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ===== REGISTRAR ENTREGA =====
+function registrarEntrega() {
+  const serial = document.getElementById('e-serial').value.trim();
+  const nombre = document.getElementById('e-nombre').value.trim();
+  const cedula = document.getElementById('e-cedula').value.trim();
+  if (!serial || !nombre || !cedula) { showToast('Completa serial, nombre y cédula', 'error'); return; }
+  if (registros.find(r => r.serial === serial && r.situacion === 'activo')) {
+    showToast('Este equipo ya está en préstamo activo', 'error'); return;
+  }
+  if (!firmaData) { showToast('El docente debe firmar el formato', 'error'); return; }
+
+  const reg = {
+    id: Date.now(),
+    serial, nombre, cedula,
+    modelo: document.getElementById('e-modelo').value,
+    estado: document.getElementById('e-estado').value,
+    asignatura: document.getElementById('e-asignatura').value,
+    tel: document.getElementById('e-tel').value,
+    obs: document.getElementById('e-obs').value,
+    fecha: document.getElementById('e-fecha').value,
+    firma: firmaData,
+    fotos: [...fotosEntrega],
+    situacion: 'activo',
+    fechaDevolucion: null,
+    estadoDevolucion: null,
+    obsDevolucion: null,
+    fotosDevolucion: [],
+    firmaDevolucion: null,
+  };
+
+  registros.push(reg);
+  guardar();
+  showToast(`Entrega de ${serial} registrada para ${nombre}`, 'success');
+  limpiarFormEntrega();
+}
+
+function limpiarFormEntrega() {
+  ['e-serial','e-modelo','e-nombre','e-cedula','e-asignatura','e-tel','e-obs'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('e-fecha').valueAsDate = new Date();
+  document.getElementById('e-estado').selectedIndex = 0;
+  limpiarFirma('entrega');
+  fotosEntrega = [];
+  document.getElementById('previewEntrega').innerHTML = '';
+}
+
+// ===== BUSCAR EQUIPO (Devolución) =====
+function buscarEquipo() {
+  const serial = document.getElementById('d-serial').value.trim().toLowerCase();
+  const cedula = document.getElementById('d-cedula').value.trim();
+  const box = document.getElementById('equipoEncontrado');
+  if (!serial && !cedula) { box.style.display = 'none'; return; }
+  const r = registros.find(x => x.situacion === 'activo' && (x.serial.toLowerCase().includes(serial) || x.cedula.includes(cedula)));
+  if (r) {
+    box.style.display = 'block';
+    box.innerHTML = `<div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+      <span class="badge badge-amber">⚡ En préstamo</span>
+      <b>${r.serial}</b> — ${r.modelo || 'Sin modelo'}
+      <span style="color:var(--muted)">Docente: ${r.nombre}</span>
+      <span style="color:var(--muted)">Desde: ${r.fecha}</span>
+    </div>`;
+    box.dataset.id = r.id;
+  } else {
+    box.style.display = 'none';
+  }
+}
+
+// ===== REGISTRAR DEVOLUCIÓN =====
+function registrarDevolucion() {
+  const box = document.getElementById('equipoEncontrado');
+  if (!box.dataset.id) { showToast('Busca primero el equipo a devolver', 'error'); return; }
+  if (!firmaDataDev) { showToast('Se requiere firma de recepción', 'error'); return; }
+
+  const reg = registros.find(r => r.id == box.dataset.id);
+  if (!reg) { showToast('Registro no encontrado', 'error'); return; }
+
+  reg.situacion = 'devuelto';
+  reg.fechaDevolucion = document.getElementById('d-fecha').value;
+  reg.estadoDevolucion = document.getElementById('d-estado').value;
+  reg.obsDevolucion = document.getElementById('d-obs').value;
+  reg.fotosDevolucion = [...fotosDevolucion];
+  reg.firmaDevolucion = firmaDataDev;
+
+  guardar();
+  showToast(`Devolución de ${reg.serial} registrada correctamente`, 'success');
+  // Limpiar
+  document.getElementById('d-serial').value = '';
+  document.getElementById('d-cedula').value = '';
+  document.getElementById('d-obs').value = '';
+  box.style.display = 'none';
+  delete box.dataset.id;
+  limpiarFirma('dev');
+  fotosDevolucion = [];
+  document.getElementById('previewDevolucion').innerHTML = '';
+}
+
+// ===== TABLA =====
+function actualizarTabla(data) {
+  const filas = data || registros;
+  const tbody = document.getElementById('tbodyRegistros');
+  if (!filas.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:2rem;">No hay registros aún</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filas.map(r => `
+    <tr>
+      <td><code style="font-family:'DM Mono';font-size:12px;color:var(--accent)">${r.serial}</code></td>
+      <td>${r.modelo || '—'}</td>
+      <td>
+        <div style="font-weight:500">${r.nombre}</div>
+        <div style="font-size:12px;color:var(--muted)">CC ${r.cedula}</div>
+      </td>
+      <td>${r.asignatura || '—'}</td>
+      <td style="font-size:12px">${r.fecha}</td>
+      <td><span class="badge ${r.estadoDevolucion ? 'badge-amber' : 'badge-green'}">${r.estadoDevolucion || r.estado}</span></td>
+      <td><span class="badge ${r.situacion==='activo' ? 'badge-amber' : 'badge-green'}">${r.situacion==='activo' ? '⚡ Activo' : '✅ Devuelto'}</span></td>
+      <td>
+        <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px" onclick="verDetalle(${r.id})">Ver</button>
+        <button class="btn btn-danger" style="padding:4px 10px;font-size:12px;margin-left:4px" onclick="eliminarRegistro(${r.id})">🗑</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filtrarTabla() {
+  const q = document.getElementById('filtroTabla').value.toLowerCase();
+  const filtrado = registros.filter(r =>
+    r.serial.toLowerCase().includes(q) ||
+    r.nombre.toLowerCase().includes(q) ||
+    (r.asignatura||'').toLowerCase().includes(q) ||
+    r.cedula.includes(q)
+  );
+  actualizarTabla(filtrado);
+}
+
+function actualizarStats() {
+  document.getElementById('stat-total').textContent = registros.length;
+  document.getElementById('stat-activos').textContent = registros.filter(r => r.situacion === 'activo').length;
+  document.getElementById('stat-devueltos').textContent = registros.filter(r => r.situacion === 'devuelto').length;
+}
+
+// ===== VER DETALLE =====
+function verDetalle(id) {
+  const r = registros.find(x => x.id === id);
+  if (!r) return;
+  const w = window.open('', '_blank', 'width=700,height=800');
+  w.document.write(`<!DOCTYPE html><html><head>
+  <meta charset="UTF-8"><title>Detalle ${r.serial}</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body{font-family:'DM Sans',sans-serif;padding:2rem;max-width:640px;margin:auto;background:#fff;color:#111;}
+    h1{font-size:20px;margin-bottom:4px;}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:1rem 0;}
+    .field label{font-size:11px;color:#666;text-transform:uppercase;}
+    .field p{font-size:14px;font-weight:500;}
+    img{max-width:100%;border-radius:8px;margin:4px;}
+    hr{border:none;border-top:1px solid #eee;margin:1rem 0;}
+    .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;}
+    .verde{background:#d1fae5;color:#065f46;}
+    .amarillo{background:#fef3c7;color:#92400e;}
+  </style></head><body>
+  <h1>📋 ${r.serial} — ${r.modelo || ''}</h1>
+  <span class="badge ${r.situacion==='activo'?'amarillo':'verde'}">${r.situacion==='activo'?'⚡ En préstamo':'✅ Devuelto'}</span>
+  <hr>
+  <div class="grid">
+    <div class="field"><label>Docente</label><p>${r.nombre}</p></div>
+    <div class="field"><label>Cédula</label><p>${r.cedula}</p></div>
+    <div class="field"><label>Asignatura</label><p>${r.asignatura||'—'}</p></div>
+    <div class="field"><label>Teléfono</label><p>${r.tel||'—'}</p></div>
+    <div class="field"><label>Fecha Entrega</label><p>${r.fecha}</p></div>
+    <div class="field"><label>Estado Entrega</label><p>${r.estado}</p></div>
+  </div>
+  <p><b>Observaciones:</b> ${r.obs||'—'}</p>
+  ${r.fotos.length ? '<hr><p><b>Fotos entrega:</b></p>' + r.fotos.map(f=>`<img src="${f}" style="width:120px;height:90px;object-fit:cover">`).join('') : ''}
+  ${r.firma ? '<hr><p><b>Firma entrega:</b></p><img src="'+r.firma+'" style="max-height:100px">' : ''}
+  ${r.situacion==='devuelto' ? `
+    <hr><h2 style="font-size:16px">Devolución</h2>
+    <div class="grid">
+      <div class="field"><label>Fecha</label><p>${r.fechaDevolucion}</p></div>
+      <div class="field"><label>Estado</label><p>${r.estadoDevolucion}</p></div>
+    </div>
+    <p><b>Obs. devolución:</b> ${r.obsDevolucion||'—'}</p>
+    ${r.fotosDevolucion.length ? '<p><b>Fotos devolución:</b></p>' + r.fotosDevolucion.map(f=>`<img src="${f}" style="width:120px;height:90px;object-fit:cover">`).join('') : ''}
+    ${r.firmaDevolucion ? '<p><b>Firma recepción:</b></p><img src="'+r.firmaDevolucion+'" style="max-height:100px">' : ''}
+  ` : ''}
+  </body></html>`);
+}
+
+// ===== ELIMINAR =====
+function eliminarRegistro(id) {
+  if (!confirm('¿Eliminar este registro?')) return;
+  registros = registros.filter(r => r.id !== id);
+  guardar();
+  actualizarTabla();
+  actualizarStats();
+  showToast('Registro eliminado', 'success');
+}
+
+// ===== PDF =====
+async function descargarPDF(tipo) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, M = 18;
+
+  // Header
+  doc.setFillColor(15, 17, 23);
+  doc.rect(0, 0, W, 30, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(16); doc.setFont('helvetica','bold');
+  doc.text('Sistema de Préstamo de Equipos', M, 13);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text(tipo === 'entrega' ? 'ACTA DE ENTREGA' : tipo === 'devolucion' ? 'ACTA DE DEVOLUCIÓN' : 'INFORME GENERAL', M, 22);
+  doc.text(`Generado: ${new Date().toLocaleDateString('es-CO', {day:'2-digit',month:'long',year:'numeric'})}`, W-M, 22, {align:'right'});
+  doc.setTextColor(0,0,0);
+
+  if (tipo === 'entrega') {
+    const serial = document.getElementById('e-serial').value;
+    const nombre = document.getElementById('e-nombre').value;
+    let y = 40;
+    const field = (lbl, val, x2) => {
+      doc.setFontSize(8); doc.setTextColor(120,120,120); doc.text(lbl.toUpperCase(), x2||M, y);
+      y += 5;
+      doc.setFontSize(11); doc.setTextColor(20,20,20); doc.text(val||'—', x2||M, y);
+      y += 8;
+    };
+
+    doc.setFontSize(12); doc.setFont('helvetica','bold');
+    doc.text('Información del Equipo', M, y); y+=8;
+    doc.setDrawColor(200); doc.line(M, y-3, W-M, y-3); doc.setFont('helvetica','normal');
+    field('Serial / N° Portátil', serial);
+    field('Marca / Modelo', document.getElementById('e-modelo').value);
+    field('Estado', document.getElementById('e-estado').value);
+    field('Fecha', document.getElementById('e-fecha').value);
+    field('Observaciones', document.getElementById('e-obs').value);
+
+    y += 4;
+    doc.setFontSize(12); doc.setFont('helvetica','bold');
+    doc.text('Información del Docente', M, y); y+=8;
+    doc.line(M, y-3, W-M, y-3); doc.setFont('helvetica','normal');
+    field('Nombre', nombre);
+    field('Cédula', document.getElementById('e-cedula').value);
+    field('Asignatura', document.getElementById('e-asignatura').value);
+    field('Teléfono', document.getElementById('e-tel').value);
+
+    if (firmaData) {
+      y += 4;
+      doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.text('Firma del Docente', M, y); y+=6;
+      doc.addImage(firmaData, 'PNG', M, y, 80, 30);
+      y += 36;
+      doc.setDrawColor(0); doc.line(M, y-1, M+80, y-1);
+      doc.setFontSize(8); doc.setTextColor(100,100,100); doc.text(nombre, M, y+5);
+    }
+
+    if (fotosEntrega.length > 0) {
+      if (y > 230) { doc.addPage(); y = 20; }
+      y += 10;
+      doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(0);
+      doc.text('Fotografías del Equipo', M, y); y += 8;
+      fotosEntrega.slice(0,4).forEach((foto, i) => {
+        const x = M + (i % 2) * 92;
+        const fy = y + Math.floor(i/2) * 56;
+        doc.addImage(foto, 'JPEG', x, fy, 80, 50);
+      });
+    }
+  } else if (tipo === 'informe') {
+    let y = 40;
+    doc.setFontSize(12); doc.setFont('helvetica','bold'); doc.text('Resumen', M, y); y+=8;
+    doc.setFontSize(10); doc.setFont('helvetica','normal');
+    doc.text(`Total entregas: ${registros.length}`, M, y); y+=6;
+    doc.text(`En préstamo activo: ${registros.filter(r=>r.situacion==='activo').length}`, M, y); y+=6;
+    doc.text(`Devueltos: ${registros.filter(r=>r.situacion==='devuelto').length}`, M, y); y+=12;
+
+    doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.text('Detalle de Registros', M, y); y+=8;
+    doc.line(M, y-3, W-M, y-3);
+
+    const cols = [18, 52, 92, 135, 165];
+    const heads = ['Serial','Docente','Asignatura','Fecha','Estado'];
+    doc.setFontSize(8); doc.setTextColor(100,100,100);
+    heads.forEach((h,i) => doc.text(h, cols[i], y)); y+=6;
+    doc.setTextColor(0);
+    registros.forEach(r => {
+      if (y > 270) { doc.addPage(); y = 20; }
+      doc.setFontSize(9);
+      doc.text(r.serial.substring(0,14), cols[0], y);
+      doc.text(r.nombre.substring(0,18), cols[1], y);
+      doc.text((r.asignatura||'—').substring(0,16), cols[2], y);
+      doc.text(r.fecha, cols[3], y);
+      doc.text(r.situacion==='activo'?'Activo':'Devuelto', cols[4], y);
+      y += 7;
+    });
+  }
+
+  const fn = tipo==='entrega' ? `entrega_${document.getElementById('e-serial').value||'equipo'}.pdf`
+           : tipo==='devolucion' ? `devolucion.pdf` : 'informe_equipos.pdf';
+  doc.save(fn);
+  showToast('PDF generado exitosamente', 'success');
+}
+
+// ===== CSV =====
+function exportarCSV() {
+  const h = ['ID','Serial','Modelo','Docente','Cedula','Asignatura','Telefono','Fecha Entrega','Estado Entrega','Observaciones','Situacion','Fecha Devolucion','Estado Devolucion'];
+  const rows = registros.map(r => [r.id,r.serial,r.modelo,r.nombre,r.cedula,r.asignatura,r.tel,r.fecha,r.estado,r.obs,r.situacion,r.fechaDevolucion||'',r.estadoDevolucion||'']);
+  const csv = [h,...rows].map(row => row.map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `equipos_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast('CSV exportado', 'success');
+}
+
+// ===== INVENTARIO FUNCTIONS =====
+
+// ===== INV TABS =====
+function invTab(id, btn) {
+  document.querySelectorAll('.inv-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('invtab-' + id).classList.add('active');
+  if (event && event.currentTarget) event.currentTarget.classList.add('active');
+  if (id === 'stock') { renderInvTabla(); renderMovTabla(); }
+  if (id === 'movimiento') poblarSelectItems();
+  if (id === 'generar') poblarSelectItems('gen-item');
+}
+
+// ===== AGREGAR ITEM =====
+function agregarItem() {
+  const nombre = document.getElementById('ni-nombre').value.trim();
+  const cat    = document.getElementById('ni-cat').value.trim();
+  const requiereSerial = document.getElementById('ni-requiere-serial').checked;
+  const cant   = parseInt(document.getElementById('ni-cant').value) || 0;
+  const codigo = document.getElementById('ni-codigo').value.trim();
+  const desc   = document.getElementById('ni-desc').value.trim();
+  const marca  = document.getElementById('ni-marca')?.value.trim() || '';
+  const modelo = document.getElementById('ni-modelo')?.value.trim() || '';
+  if (!nombre) { showToast('El nombre es obligatorio', 'error'); return; }
+  if (!cat) { showToast('Selecciona una categoría', 'error'); return; }
+
+  if (requiereSerial) {
+    // Ítems con serial individual
+    const serialesRaw = document.getElementById('ni-seriales')?.value.trim() || '';
+    const seriales = serialesRaw ? serialesRaw.replace(/\n/g,',').split(',').map(s=>s.trim()).filter(Boolean) : [];
+    if (seriales.length === 0) { showToast('Ingresa al menos un serial', 'error'); return; }
+
+    let tipoItem = inventario.find(i => i.nombre === nombre && i.categoria === cat && i.requiereSerial);
+    if (!tipoItem) {
+      tipoItem = {
+        id: Date.now(), nombre, categoria: cat, requiereSerial: true,
+        cantTotal: 0, disponible: 0, activos: [],
+        codigo: codigo || 'CAT-' + Math.random().toString(36).substr(2,6).toUpperCase(),
+        desc, marca, modelo, fechaCreacion: new Date().toISOString().slice(0,10)
+      };
+      inventario.push(tipoItem);
+    }
+    seriales.forEach((serial, idx2) => {
+      const activo = { id: Date.now() + idx2 + 1, serial, estado: 'Disponible', marca, modelo };
+      tipoItem.activos = tipoItem.activos || [];
+      tipoItem.activos.push(activo);
+      tipoItem.cantTotal++;
+      tipoItem.disponible++;
+    });
+    movimientos.push({ id: Date.now()+9999, itemId: tipoItem.id, itemNombre: tipoItem.nombre, tipo: 'entrada', cantidad: seriales.length, responsable: 'Sistema', referencia: 'Registro con serial', obs: 'Seriales: ' + seriales.join(', '), fecha: new Date().toISOString().slice(0,10) });
+  } else {
+    // Ítems sin serial (stock genérico)
+    const nuevo = {
+      id: Date.now(), nombre, categoria: cat, requiereSerial: false,
+      cantTotal: cant, disponible: cant, activos: [],
+      codigo: codigo || 'EQ-' + Math.random().toString(36).substr(2,8).toUpperCase(),
+      desc, marca, modelo, fechaCreacion: new Date().toISOString().slice(0,10)
+    };
+    inventario.push(nuevo);
+    if (cant > 0) movimientos.push({ id: Date.now()+1, itemId: nuevo.id, itemNombre: nuevo.nombre, tipo: 'entrada', cantidad: cant, responsable: 'Sistema', referencia: 'Stock inicial', obs: 'Registro nuevo ítem', fecha: nuevo.fechaCreacion });
+  }
+
+  guardarInv();
+  renderInvTabla();
+  actualizarInvStats();
+  invTab('stock');
+  document.querySelectorAll('.tab-btn').forEach((b,i) => { if(i===0) b.classList.add('active'); else b.classList.remove('active'); });
+  showToast('Ítem agregado al inventario', 'success');
+}
+
+function generarCodigo(cat) {
+  const pre = (cat||'INV').toUpperCase().replace(/\s+/g,'').substring(0,3);
+  return pre + '-' + Date.now().toString().slice(-6);
+}
+
+function limpiarNuevoItem() {
+  ['ni-nombre','ni-codigo','ni-desc','ni-marca','ni-modelo','ni-seriales'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('ni-cant').value = 1;
+  const catSel = document.getElementById('ni-cat');
+  if (catSel) catSel.value = '';
+  const chk = document.getElementById('ni-requiere-serial');
+  if (chk) { chk.checked = false; toggleSerialMode(); }
+}
+
+// ===== RENDER TABLA INVENTARIO =====
+function renderInvTabla() {
+  const q    = (document.getElementById('inv-filtro')?.value || '').toLowerCase();
+  const cat  = document.getElementById('inv-filtro-cat')?.value || '';
+  const tbody = document.getElementById('inv-tbody');
+  if (!tbody) return;
+  let data = inventario.filter(i =>
+    (!q || i.nombre.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q)) &&
+    (!cat || i.categoria === cat)
+  );
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem;">Sin ítems registrados</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(item => {
+    const pct = item.cantTotal > 0 ? Math.round((item.disponible / item.cantTotal) * 100) : 0;
+    const color = pct > 50 ? 'var(--green)' : pct > 20 ? 'var(--amber)' : 'var(--red)';
+    const badge = item.disponible <= 0 ? '<span class="badge badge-red">Sin stock</span>'
+                : item.disponible < item.cantTotal * 0.2 ? '<span class="badge badge-amber">Stock bajo</span>'
+                : '<span class="badge badge-green">Disponible</span>';
+    return `<tr>
+      <td><code style="font-family:'DM Mono';font-size:11px;color:var(--accent)">${item.codigo}</code></td>
+      <td><div style="font-weight:500">${item.nombre}</div><div style="font-size:11px;color:var(--muted)">${item.desc ? item.desc.substring(0,40) : ''}</div>${item.requiereSerial ? '<div style="font-size:11px;margin-top:2px"><span style="color:var(--amber)">🔖 Con serial</span></div>' : ''}</td>
+      <td><span class="badge" style="background:rgba(124,90,245,0.12);color:#a78bfa;border:1px solid rgba(124,90,245,0.2)">${item.categoria}</span></td>
+      <td style="font-family:'DM Mono';font-size:13px">${item.cantTotal}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:'DM Mono';font-size:14px;font-weight:500;color:${color}">${item.disponible}</span>
+          <div style="flex:1;height:4px;background:var(--surface2);border-radius:2px;min-width:40px">
+            <div style="height:4px;background:${color};border-radius:2px;width:${pct}%"></div>
+          </div>
+        </div>
+      </td>
+      <td>${badge}</td>
+      <td style="display:flex;gap:4px;flex-wrap:wrap;">
+        <button class="btn btn-secondary" style="padding:3px 9px;font-size:11px" onclick="verHistorialItem(${item.id})">📋</button>
+        <button class="btn btn-secondary" style="padding:3px 9px;font-size:11px" onclick="editarItem(${item.id})">✏️</button>
+        <button class="btn btn-secondary" style="padding:3px 9px;font-size:11px" onclick="verHistorialItem(${item.id})">📋</button>
+        <button class="btn btn-secondary" style="padding:3px 9px;font-size:11px" onclick="generarBarcodeItem('${item.codigo}')">🏷</button>
+        <button class="btn btn-danger" style="padding:3px 9px;font-size:11px" onclick="eliminarItem(${item.id})">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('inv-hist-card').style.display = 'none';
+}
+
+// ===== HISTORIAL POR ITEM =====
+function verHistorialItem(id) {
+  const item = inventario.find(i => i.id === id);
+  const movs = movimientos.filter(m => m.itemId === id);
+  const card = document.getElementById('inv-hist-card');
+  const tbody = document.getElementById('mov-tbody');
+  card.style.display = 'block';
+  document.getElementById('card-title-hist') && (document.getElementById('card-title-hist').textContent = `Historial — ${item?.nombre}`);
+  tbody.innerHTML = movs.length ? movs.slice().reverse().map(m => `
+    <tr>
+      <td style="font-size:12px">${m.fecha}</td>
+      <td>${m.itemNombre}</td>
+      <td><span class="badge ${m.tipo==='entrada'?'mov-badge-entrada':'mov-badge-salida'}">${m.tipo==='entrada'?'📥 Entrada':'📤 Salida'}</span></td>
+      <td style="font-family:'DM Mono'">${m.tipo==='entrada'?'+':'-'}${m.cantidad}</td>
+      <td style="font-size:12px">${m.referencia||'—'}</td>
+      <td>${m.responsable||'—'}</td>
+      <td style="font-size:12px;color:var(--muted)">${m.obs||'—'}</td>
+    </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:1rem;">Sin movimientos</td></tr>';
+  card.scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderMovTabla() {
+  const tbody = document.getElementById('mov-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = movimientos.slice().reverse().slice(0, 50).map(m => `
+    <tr>
+      <td style="font-size:12px">${m.fecha}</td>
+      <td>${m.itemNombre}</td>
+      <td><span class="badge ${m.tipo==='entrada'?'mov-badge-entrada':'mov-badge-salida'}">${m.tipo==='entrada'?'📥 Entrada':'📤 Salida'}</span></td>
+      <td style="font-family:'DM Mono'">${m.tipo==='entrada'?'+':'-'}${m.cantidad}</td>
+      <td style="font-size:12px">${m.referencia||'—'}</td>
+      <td>${m.responsable||'—'}</td>
+      <td style="font-size:12px;color:var(--muted)">${m.obs||'—'}</td>
+    </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:1rem;">Sin movimientos</td></tr>';
+}
+
+// ===== REGISTRAR MOVIMIENTO =====
+function registrarMovimiento() {
+  const itemId = parseInt(document.getElementById('mov-item').value);
+  const tipo   = document.getElementById('mov-tipo').value;
+  const cant   = parseInt(document.getElementById('mov-cant').value) || 0;
+  const resp   = document.getElementById('mov-resp').value.trim();
+  const ref    = document.getElementById('mov-ref').value.trim();
+  const obs    = document.getElementById('mov-obs').value.trim();
+  const fecha  = document.getElementById('mov-fecha').value;
+  if (!itemId) { showToast('Selecciona un ítem', 'error'); return; }
+  if (cant <= 0) { showToast('La cantidad debe ser mayor a 0', 'error'); return; }
+  const item = inventario.find(i => i.id === itemId);
+  if (!item) { showToast('Ítem no encontrado', 'error'); return; }
+  if (tipo === 'salida' && item.disponible < cant) {
+    showToast(`Stock insuficiente. Disponible: ${item.disponible}`, 'error'); return;
+  }
+  if (tipo === 'entrada') item.disponible += cant;
+  else { item.disponible -= cant; }
+  item.cantTotal = tipo === 'entrada' ? item.cantTotal + cant : item.cantTotal;
+  movimientos.push({ id: Date.now(), itemId, itemNombre: item.nombre, tipo, cantidad: cant, responsable: resp, referencia: ref, obs, fecha });
+  guardarInv();
+  actualizarInvStats();
+  showToast(`Movimiento registrado: ${tipo} de ${cant} uds.`, 'success');
+  ['mov-cant','mov-resp','mov-ref','mov-obs'].forEach(id => document.getElementById(id).value = id==='mov-cant'?'1':'');
+}
+
+// ===== SCANNER =====
+async function iniciarScanner() {
+  const video = document.getElementById('scannerVideo');
+  const placeholder = document.getElementById('scannerPlaceholder');
+  try {
+    scannerStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = scannerStream;
+    video.style.display = 'block';
+    placeholder.style.display = 'none';
+    scannerActive = true;
+    escanearLoop();
+    showToast('Cámara activada', 'success');
+  } catch(e) {
+    showToast('No se pudo acceder a la cámara: ' + e.message, 'error');
+  }
+}
+
+function detenerScanner() {
+  if (scannerStream) { scannerStream.getTracks().forEach(t => t.stop()); scannerStream = null; }
+  if (scannerInterval) { clearInterval(scannerInterval); scannerInterval = null; }
+  const video = document.getElementById('scannerVideo');
+  video.style.display = 'none';
+  document.getElementById('scannerPlaceholder').style.display = 'block';
+  scannerActive = false;
+}
+
+function escanearLoop() {
+  if (!window.ZXing) return;
+  const hints = new Map();
+  const reader = new ZXing.BrowserMultiFormatReader(hints);
+  const video = document.getElementById('scannerVideo');
+  reader.decodeFromVideoElement(video, (result, err) => {
+    if (result) {
+      procesarCodigoEscaneado(result.getText());
+      reader.reset();
+      detenerScanner();
+    }
+  });
+}
+
+function escanearArchivo() { document.getElementById('scan-file-input').click(); }
+
+async function procesarImagenBarcode(input) {
+  if (!input.files[0]) return;
+  if (!window.ZXing) { showToast('Librería de lectura no disponible', 'error'); return; }
+  const reader = new ZXing.BrowserMultiFormatReader();
+  const url = URL.createObjectURL(input.files[0]);
+  try {
+    const result = await reader.decodeFromImageUrl(url);
+    procesarCodigoEscaneado(result.getText());
+  } catch(e) {
+    showToast('No se detectó código en la imagen', 'error');
+  }
+}
+
+function procesarCodigoEscaneado(codigo) {
+  const box = document.getElementById('scanResult');
+  box.innerHTML = `<span style="font-size:18px">✅</span> <strong>${codigo}</strong>`;
+  const item = inventario.find(i => i.codigo === codigo);
+  const info = document.getElementById('scanItemInfo');
+  if (item) {
+    info.style.display = 'block';
+    info.innerHTML = `<div class="card" style="background:rgba(79,128,255,0.06);border-color:rgba(79,128,255,0.2)">
+      <b>${item.nombre}</b> — ${item.categoria}<br>
+      <span style="font-size:13px;color:var(--muted)">Disponible: <strong style="color:var(--green)">${item.disponible}</strong> / ${item.cantTotal}</span><br>
+      <button class="btn btn-primary" style="margin-top:10px;padding:7px 14px;font-size:13px" onclick="irAMovimientoItem(${item.id})">🔄 Registrar movimiento</button>
+    </div>`;
+  } else {
+    info.style.display = 'block';
+    info.innerHTML = `<div class="card" style="background:rgba(251,191,36,0.06);border-color:rgba(251,191,36,0.2)"><span style="color:var(--amber)">⚠ Código no encontrado en inventario: <code>${codigo}</code></span><br>
+    <button class="btn btn-secondary" style="margin-top:8px;font-size:13px" onclick="document.getElementById('ni-codigo').value='${codigo}';invTab('nuevo')">➕ Agregar este ítem</button></div>`;
+  }
+  showToast('Código detectado: ' + codigo, 'success');
+}
+
+function irAMovimientoItem(id) {
+  invTab('movimiento');
+  document.querySelectorAll('.tab-btn').forEach((b,i) => { if(i===2) b.classList.add('active'); else b.classList.remove('active'); });
+  poblarSelectItems();
+  setTimeout(() => { document.getElementById('mov-item').value = id; }, 100);
+}
+
+// ===== GENERAR BARCODE =====
+function generarBarcode() {
+  const texto = document.getElementById('gen-texto').value.trim();
+  const fmt   = document.getElementById('gen-formato').value;
+  const preview = document.getElementById('barcodePreview');
+  const errBox  = document.getElementById('barcodeError');
+  if (!texto) { preview.style.display='none'; return; }
+  try {
+    JsBarcode('#barcodeResult', texto, {
+      format: fmt, width: 2, height: 80,
+      displayValue: true, fontSize: 14,
+      margin: 10, background: '#ffffff', lineColor: '#000000'
+    });
+    document.getElementById('barcodeLabel').textContent = texto;
+    preview.style.display = 'flex';
+    errBox.style.display = 'none';
+  } catch(e) {
+    errBox.textContent = 'Error: ' + e.message;
+    errBox.style.display = 'block';
+    preview.style.display = 'none';
+  }
+}
+
+function usarCodigoItem() {
+  const id = parseInt(document.getElementById('gen-item').value);
+  if (!id) return;
+  const item = inventario.find(i => i.id === id);
+  if (item) { document.getElementById('gen-texto').value = item.codigo; generarBarcode(); }
+}
+
+function generarBarcodeItem(codigo) {
+  invTab('generar');
+  document.querySelectorAll('.tab-btn').forEach((b,i) => { if(i===4) b.classList.add('active'); else b.classList.remove('active'); });
+  setTimeout(() => { document.getElementById('gen-texto').value = codigo; generarBarcode(); }, 100);
+}
+
+function descargarBarcode() {
+  const svg = document.getElementById('barcodeResult');
+  const texto = document.getElementById('gen-texto').value || 'codigo';
+  const serializer = new XMLSerializer();
+  const svgStr = serializer.serializeToString(svg);
+  const canvas = document.createElement('canvas');
+  const img = new Image();
+  img.onload = () => {
+    canvas.width = img.width; canvas.height = img.height;
+    canvas.getContext('2d').drawImage(img, 0, 0);
+    const a = document.createElement('a');
+    a.download = `barcode_${texto}.png`;
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  };
+  img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgStr)));
+}
+
+// ===== EDITAR ITEM =====
+function editarItem(id) {
+  const item = inventario.find(i => i.id === id);
+  if (!item) return;
+  document.getElementById('edit-id').value = id;
+  document.getElementById('edit-nombre').value = item.nombre;
+  document.getElementById('edit-cat').value = item.categoria;
+  document.getElementById('edit-cant').value = item.cantTotal;
+  document.getElementById('edit-desc').value = item.desc || '';
+  document.getElementById('modalEditItem').classList.add('open');
+}
+
+function guardarEdicion() {
+  const id   = parseInt(document.getElementById('edit-id').value);
+  const item = inventario.find(i => i.id === id);
+  if (!item) return;
+  const nuevaCant = parseInt(document.getElementById('edit-cant').value) || 0;
+  const diff = nuevaCant - item.cantTotal;
+  item.nombre    = document.getElementById('edit-nombre').value.trim();
+  item.categoria = document.getElementById('edit-cat').value.trim();
+  item.desc      = document.getElementById('edit-desc').value.trim();
+  item.cantTotal = nuevaCant;
+  item.disponible = Math.max(0, item.disponible + diff);
+  if (diff !== 0) {
+    movimientos.push({ id: Date.now(), itemId: item.id, itemNombre: item.nombre, tipo: diff>0?'entrada':'salida', cantidad: Math.abs(diff), responsable: 'Admin', referencia: 'Ajuste manual', obs: 'Edición del ítem', fecha: new Date().toISOString().slice(0,10) });
+  }
+  guardarInv();
+  cerrarModal('modalEditItem');
+  renderInvTabla();
+  actualizarInvStats();
+  showToast('Ítem actualizado', 'success');
+}
+
+function eliminarItem(id) {
+  if (!confirm('¿Eliminar este ítem del inventario?')) return;
+  inventario = inventario.filter(i => i.id !== id);
+  movimientos = movimientos.filter(m => m.itemId !== id);
+  guardarInv();
+  renderInvTabla();
+  actualizarInvStats();
+  showToast('Ítem eliminado', 'success');
+}
+
+// ===== MODAL =====
+function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ===== STATS INVENTARIO =====
+function actualizarInvStats() {
+  const hoy = new Date().toISOString().slice(0,10);
+  document.getElementById('inv-stat-items').textContent = inventario.length;
+  document.getElementById('inv-stat-disp').textContent  = inventario.reduce((s,i)=>s+i.disponible,0);
+  document.getElementById('inv-stat-entradas').textContent = movimientos.filter(m=>m.tipo==='entrada'&&m.fecha===hoy).reduce((s,m)=>s+m.cantidad,0);
+  document.getElementById('inv-stat-salidas').textContent  = movimientos.filter(m=>m.tipo==='salida'&&m.fecha===hoy).reduce((s,m)=>s+m.cantidad,0);
+  poblarCatFilter();
+  poblarSelectItems();
+  poblarSelectCat();
+}
+
+function poblarCatFilter() {
+  const cats = obtenerCategoriasUnicas();
+  const sel  = document.getElementById('inv-filtro-cat');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Todas las categorías</option>' + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  if (cats.includes(current)) sel.value = current;
+}
+
+function poblarSelectCat() {
+  const cats = obtenerCategoriasUnicas();
+  const sel = document.getElementById('ni-cat');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Selecciona categoría —</option>' + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  if (cur) sel.value = cur;
+}
+
+function obtenerCategoriasUnicas() {
+  // Merge from categorias store + items already in inventory
+  const stored = JSON.parse(localStorage.getItem('categorias_lista') || '[]');
+  const fromInv = [...new Set(inventario.map(i => i.categoria).filter(Boolean))];
+  const all = [...new Set([...stored.map(c=>c.nombre), ...fromInv])].sort();
+  return all;
+}
+
+function poblarSelectItems(selectId) {
+  const ids = selectId ? [selectId] : ['mov-item','gen-item'];
+  ids.forEach(sid => {
+    const sel = document.getElementById(sid);
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— Selecciona ítem —</option>' + inventario.map(i=>`<option value="${i.id}">${i.nombre} (${i.codigo}) — Disp: ${i.disponible}</option>`).join('');
+    if (cur) sel.value = cur;
+  });
+}
+
+// ===== EXPORT EXCEL (inventario) =====
+function exportarInvExcel() {
+  const wb = XLSX.utils.book_new();
+  // Hoja de stock
+  const stockData = [['Código','Nombre','Categoría','Cant. Total','Disponible','Descripción','Fecha Creación']].concat(
+    inventario.map(i=>[i.codigo,i.nombre,i.categoria,i.cantTotal,i.disponible,i.desc||'',i.fechaCreacion])
+  );
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(stockData), 'Stock');
+  XLSX.writeFile(wb, `inventario_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast('Excel de inventario descargado', 'success');
+}
+
+function exportarMovExcel() {
+  const wb = XLSX.utils.book_new();
+  const movData = [['ID','Ítem','Tipo','Cantidad','Responsable','Referencia','Observaciones','Fecha']].concat(
+    movimientos.map(m=>[m.id,m.itemNombre,m.tipo,m.cantidad,m.responsable||'',m.referencia||'',m.obs||'',m.fecha])
+  );
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(movData), 'Movimientos');
+  XLSX.writeFile(wb, `movimientos_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast('Excel de movimientos descargado', 'success');
+}
+
+
+
+function toggleSerialMode() {
+  const checked = document.getElementById('ni-requiere-serial').checked;
+  document.getElementById('ni-cant-group').style.display = checked ? 'none' : '';
+  document.getElementById('ni-serial-group').style.display = checked ? '' : 'none';
+}
+
+// ===== CATEGORÍAS =====
+function guardarCategoria() {
+  const nombre = document.getElementById('cat-nombre').value.trim();
+  const icono  = document.getElementById('cat-icono').value.trim() || '📦';
+  const desc   = document.getElementById('cat-desc').value.trim();
+  if (!nombre) { showToast('El nombre es obligatorio', 'error'); return; }
+
+  let cats = JSON.parse(localStorage.getItem('categorias_lista') || '[]');
+  if (cats.some(c => c.nombre.toLowerCase() === nombre.toLowerCase())) {
+    showToast('Esta categoría ya existe', 'error'); return;
+  }
+  cats.push({ id: Date.now(), nombre, icono, desc, fecha: new Date().toISOString().slice(0,10) });
+  localStorage.setItem('categorias_lista', JSON.stringify(cats));
+  limpiarFormCat();
+  renderCategorias();
+  poblarSelectCat();
+  poblarCatFilter();
+  showToast('Categoría guardada: ' + nombre, 'success');
+}
+
+function limpiarFormCat() {
+  document.getElementById('cat-nombre').value = '';
+  document.getElementById('cat-icono').value = '';
+  document.getElementById('cat-desc').value = '';
+}
+
+function eliminarCategoria(id) {
+  if (!confirm('¿Eliminar esta categoría?')) return;
+  let cats = JSON.parse(localStorage.getItem('categorias_lista') || '[]');
+  cats = cats.filter(c => c.id !== id);
+  localStorage.setItem('categorias_lista', JSON.stringify(cats));
+  renderCategorias();
+  poblarSelectCat();
+  poblarCatFilter();
+  showToast('Categoría eliminada', 'success');
+}
+
+function renderCategorias() {
+  const cats = JSON.parse(localStorage.getItem('categorias_lista') || '[]');
+  const filtro = (document.getElementById('cat-filtro')?.value || '').toLowerCase();
+  const container = document.getElementById('cat-grid-container');
+  if (!container) return;
+
+  const filtradas = cats.filter(c => c.nombre.toLowerCase().includes(filtro) || (c.desc||'').toLowerCase().includes(filtro));
+  if (filtradas.length === 0) {
+    container.innerHTML = '<div class="cat-empty">No hay categorías aún. ¡Crea la primera arriba!</div>';
+    return;
+  }
+  container.innerHTML = filtradas.map(c => {
+    const itemCount = inventario.filter(i => i.categoria === c.nombre).length;
+    return `<div class="cat-card">
+      <div class="cat-icon">${c.icono}</div>
+      <div class="cat-nombre">${c.nombre}</div>
+      <div class="cat-desc">${c.desc || 'Sin descripción'}</div>
+      <div style="font-size:12px;color:var(--muted);">📦 ${itemCount} ítem${itemCount!==1?'s':''} · ${c.fecha}</div>
+      <div class="cat-actions">
+        <button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="eliminarCategoria(${c.id})">🗑 Eliminar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===== GUARDAR INV =====
+function guardarInv() {
+  localStorage.setItem('inv_items', JSON.stringify(inventario));
+  localStorage.setItem('inv_movimientos', JSON.stringify(movimientos));
+}
+
+// ===== STORAGE =====
+function guardar() {
+  localStorage.setItem('equipos_registros', JSON.stringify(registros));
+  actualizarStats();
+}
+
+// ===== TOAST =====
+function showToast(msg, tipo) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + (tipo||'');
+  setTimeout(() => t.className = '', 3000);
+}
+</script>
+</body>
+</html>
