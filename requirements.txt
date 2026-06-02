@@ -6,3 +6,4 @@ Pillow==11.2.1
 fpdf2==2.7.9
 python-barcode==0.15.1
 qrcode[pil]==7.4.2
+psycopg2-binary==2.9.9

@@ -30,14 +30,25 @@ import shutil, uuid, os, io
 # CONFIGURACIÓN
 # ─────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent
-DB_PATH  = BASE_DIR / "equipos.db"
 UPLOADS  = BASE_DIR / "uploads"
 STATIC   = BASE_DIR / "static"
 
 UPLOADS.mkdir(exist_ok=True)
 STATIC.mkdir(exist_ok=True)
 
-engine       = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False})
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL:
+    # Render PostgreSQL
+    engine = create_engine(DATABASE_URL)
+else:
+    # Desarrollo local
+    DB_PATH = BASE_DIR / "equipos.db"
+
+    engine = create_engine(
+        f"sqlite:///{DB_PATH}",
+        connect_args={"check_same_thread": False}
+    )
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base         = declarative_base()
 
