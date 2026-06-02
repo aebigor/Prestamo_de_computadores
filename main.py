@@ -36,19 +36,19 @@ STATIC   = BASE_DIR / "static"
 UPLOADS.mkdir(exist_ok=True)
 STATIC.mkdir(exist_ok=True)
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.environ["DATABASE_URL"]
 
-if DATABASE_URL:
-    # Render PostgreSQL
-    engine = create_engine(DATABASE_URL)
-else:
-    # Desarrollo local
-    DB_PATH = BASE_DIR / "equipos.db"
-
-    engine = create_engine(
-        f"sqlite:///{DB_PATH}",
-        connect_args={"check_same_thread": False}
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgres://",
+        "postgresql://",
+        1
     )
+print("Conectado a:", DATABASE_URL)
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True
+)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base         = declarative_base()
 
