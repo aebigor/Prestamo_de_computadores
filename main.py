@@ -310,7 +310,13 @@ def serializar_entrega_legacy(e: Entrega) -> dict:
         "firma_devolucion": f"/uploads/{e.firma_devolucion}" if e.firma_devolucion else None,
         "fotos_devolucion": fotos_d,
     }
-
+@app.get("/debug-db")
+def debug_db(db: Session = Depends(get_db)):
+    return {
+        "inventario": db.query(Inventario).count(),
+        "docentes": db.query(Docente).count(),
+        "activos": db.query(Activo).count()
+    }
 # ═══════════════════════════════════════════════
 # DOCENTES
 # ═══════════════════════════════════════════════
