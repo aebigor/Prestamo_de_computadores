@@ -1697,7 +1697,7 @@ function poblarSelectItems(selectId) {
 // ═══════════════════════════════════════════════════════════════
 // CATEGORÍAS (en memoria + API inventario como fuente)
 // ═══════════════════════════════════════════════════════════════
-function guardarCategoria() {
+async function guardarCategoria() {
   const nombre = document.getElementById('cat-nombre').value.trim();
   const icono  = document.getElementById('cat-icono').value.trim() || '📦';
   const desc   = document.getElementById('cat-desc').value.trim();
@@ -1705,12 +1705,24 @@ function guardarCategoria() {
   if (categorias.some(c=>c.nombre.toLowerCase()===nombre.toLowerCase())) {
     showToast('Esta categoría ya existe', 'error'); return;
   }
-  categorias.push({ nombre, icono, desc, fecha: new Date().toISOString().slice(0,10) });
-  limpiarFormCat();
-  renderCategorias();
-  poblarSelectCat();
-  poblarCatFilter();
-  showToast('Categoría creada: ' + nombre, 'success');
+  try {
+    // Crear un ítem "plantilla" en inventario para que la categoría persista en DB
+    const f = new FormData();
+    f.append('nombre', `[Categoría] ${nombre}`);
+    f.append('categoria', nombre);
+    f.append('requiere_serial', 'false');
+    f.append('stock', '0');
+    if (desc) f.append('descripcion', desc);
+    await api('POST', '/inventario', f);
+    await cargarCategorias();
+    limpiarFormCat();
+    renderCategorias();
+    poblarSelectCat();
+    poblarCatFilter();
+    showToast('Categoría creada: ' + nombre, 'success');
+  } catch(e) {
+    showToast('Error al guardar categoría: ' + e.message, 'error');
+  }
 }
 
 function limpiarFormCat() {
@@ -1719,13 +1731,20 @@ function limpiarFormCat() {
   document.getElementById('cat-desc').value   = '';
 }
 
-function eliminarCategoria(nombre) {
-  if (!confirm('¿Eliminar esta categoría?')) return;
-  categorias = categorias.filter(c => c.nombre !== nombre);
-  renderCategorias();
-  poblarSelectCat();
-  poblarCatFilter();
-  showToast('Categoría eliminada', 'success');
+async function eliminarCategoria(nombre) {
+  if (!confirm('¿Eliminar esta categoría? Esto eliminará también los ítems de inventario que solo tenían esta categoría.')) return;
+  try {
+    // Eliminar el ítem plantilla si existe
+    const item = inventario.find(i => i.categoria === nombre && i.nombre === `[Categoría] ${nombre}`);
+    if (item) await api('DELETE', `/inventario/${item.id}`);
+    await cargarCategorias();
+    renderCategorias();
+    poblarSelectCat();
+    poblarCatFilter();
+    showToast('Categoría eliminada', 'success');
+  } catch(e) {
+    showToast('Error al eliminar: ' + e.message, 'error');
+  }
 }
 
 function renderCategorias() {
