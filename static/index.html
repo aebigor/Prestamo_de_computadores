@@ -1487,6 +1487,7 @@ function renderInvTabla() {
   const tbody = document.getElementById('inv-tbody');
   if (!tbody) return;
   let data = inventario.filter(i =>
+    !i.nombre.startsWith('[Categoría]') &&
     (!q || i.nombre.toLowerCase().includes(q) || (i.codigo||'').toLowerCase().includes(q)) &&
     (!cat || i.categoria === cat)
   );
