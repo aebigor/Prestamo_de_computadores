@@ -1060,11 +1060,19 @@ function mapInvItem(inv) {
 }
 
 async function cargarCategorias() {
-  // Las categorías viven en el inventario (extraídas) más la tabla aparte si existe
   const items = await api('GET', '/inventario');
   const fromInv = [...new Set(items.map(i => i.categoria))].sort();
-  // Enriquecer con icono si ya tenían uno en sessionStorage (opcional)
-  categorias = fromInv.map(nombre => ({ nombre, icono: '📦', desc: '' }));
+  categorias = fromInv.map(nombre => {
+    // Buscar el ítem plantilla de esta categoría para recuperar el icono
+    const plantilla = items.find(i => i.nombre === `[Categoría] ${nombre}`);
+    let icono = '📦', desc = '';
+    if (plantilla?.descripcion) {
+      const partes = plantilla.descripcion.split('||');
+      icono = partes[0] || '📦';
+      desc  = partes[1] || '';
+    }
+    return { nombre, icono, desc };
+  });
   poblarSelectCat();
   poblarCatFilter();
 }
@@ -1713,7 +1721,7 @@ async function guardarCategoria() {
     f.append('requiere_serial', 'false');
     f.append('stock', '0');
     if (desc) f.append('descripcion', desc);
-    await api('POST', '/inventario', f);
+    f.append('descripcion', `${icono}||${desc}`);
     await cargarCategorias();
     limpiarFormCat();
     renderCategorias();
@@ -1737,6 +1745,7 @@ async function eliminarCategoria(nombre) {
     // Eliminar el ítem plantilla si existe
     const item = inventario.find(i => i.categoria === nombre && i.nombre === `[Categoría] ${nombre}`);
     if (item) await api('DELETE', `/inventario/${item.id}`);
+    await cargarInventario();
     await cargarCategorias();
     renderCategorias();
     poblarSelectCat();
