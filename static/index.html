@@ -409,12 +409,19 @@
       <div class="card-title">Información del Equipo</div>
       <div class="form-grid">
         <div class="form-group">
-          <label>N° de Portátil / Serial</label>
-          <input type="text" id="e-serial" placeholder="Ej: LPT-2024-001">
+          <label>Categoría</label>
+          <select id="e-categoria" onchange="poblarEquiposDisponibles()">
+            <option value="">— Selecciona categoría —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Equipo / Serial disponible</label>
+          <input list="e-equipos-list" id="e-serial" placeholder="Buscar o escribir equipo..." oninput="autocompletarModelo()">
+          <datalist id="e-equipos-list"></datalist>
         </div>
         <div class="form-group">
           <label>Marca / Modelo</label>
-          <input type="text" id="e-modelo" placeholder="Ej: Lenovo IdeaPad 3">
+          <input type="text" id="e-modelo" placeholder="Se llena automático o escribe">
         </div>
         <div class="form-group">
           <label>Estado del Equipo</label>
@@ -495,12 +502,13 @@
       <div class="card-title">Buscar Registro de Entrega</div>
       <div class="form-grid">
         <div class="form-group">
-          <label>N° de Portátil / Serial</label>
-          <input type="text" id="d-serial" placeholder="Ingresa el serial del equipo" oninput="buscarEquipo()">
+          <label>N° de Portátil / Serial (solo equipos entregados)</label>
+          <input list="d-serial-list" type="text" id="d-serial" placeholder="Buscar serial o equipo entregado..." oninput="poblarSerialDevolucion(); buscarEquipo()">
+          <datalist id="d-serial-list"></datalist>
         </div>
         <div class="form-group">
           <label>Cédula del Docente</label>
-          <input type="text" id="d-cedula" placeholder="Cédula del docente" oninput="buscarEquipo()">
+          <input type="text" id="d-cedula" placeholder="Cédula del docente" oninput="poblarSerialDevolucion(); buscarEquipo()">
         </div>
       </div>
       <div id="equipoEncontrado" style="display:none;" class="card" style="margin-top:1rem; background:var(--surface2);">
@@ -1158,6 +1166,60 @@ function agregarFotos(input, tipo) {
   });
 }
 
+function poblarCatEntrega() {
+  const sel = document.getElementById('e-categoria');
+  if (!sel) return;
+  const cats = [...new Set(
+    inventario
+      .filter(i => !i.nombre.startsWith('[Categoría]'))
+      .map(i => i.categoria)
+      .filter(Boolean)
+  )].sort();
+  sel.innerHTML = '<option value="">— Selecciona categoría —</option>' +
+    cats.map(c => {
+      const cat = categorias.find(x => x.nombre === c);
+      return `<option value="${c}">${cat?.icono || '📦'} ${c}</option>`;
+    }).join('');
+}
+
+function poblarEquiposDisponibles() {
+  const cat = document.getElementById('e-categoria')?.value;
+  const dl  = document.getElementById('e-equipos-list');
+  if (!dl) return;
+  // Seriales ya entregados (activos)
+  const serialesOcupados = new Set(
+    registros.filter(r => r.situacion === 'activo').map(r => r.serial).filter(Boolean)
+  );
+  const items = inventario.filter(i =>
+    !i.nombre.startsWith('[Categoría]') &&
+    (!cat || i.categoria === cat)
+  );
+  let opciones = [];
+  items.forEach(item => {
+    if (item.requiereSerial && item.seriales) {
+      item.seriales
+        .filter(s => !serialesOcupados.has(s.codigo))
+        .forEach(s => opciones.push(`${s.codigo} — ${item.nombre}`));
+    } else if (!item.requiereSerial && item.disponible > 0) {
+      opciones.push(item.nombre);
+    }
+  });
+  dl.innerHTML = opciones.map(o => `<option value="${o}">`).join('');
+}
+
+function autocompletarModelo() {
+  const val = document.getElementById('e-serial')?.value || '';
+  const serial = val.split(' — ')[0].trim();
+  const item = inventario.find(i =>
+    (i.seriales && i.seriales.some(s => s.codigo === serial)) ||
+    i.nombre === serial
+  );
+  if (item) {
+    const modeloEl = document.getElementById('e-modelo');
+    if (modeloEl && !modeloEl.value) modeloEl.value = `${item.marca || ''} ${item.modelo || ''}`.trim() || item.nombre;
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════
 // ENTREGA → API /entregas
 // ═══════════════════════════════════════════════════════════════
@@ -1478,6 +1540,19 @@ function toggleSerialMode() {
   document.getElementById('ni-serial-group').style.display = checked ? '' : 'none';
 }
 
+function poblarSerialDevolucion() {
+  const dl  = document.getElementById('d-serial-list');
+  const ced = document.getElementById('d-cedula')?.value.trim();
+  if (!dl) return;
+  const activos = registros.filter(r =>
+    r.situacion === 'activo' &&
+    (!ced || r.cedula_docente === ced)
+  );
+  dl.innerHTML = activos.map(r =>
+    `<option value="${r.serial || r.nombre_equipo}">`
+  ).join('');
+}
+
 // ═══════════════════════════════════════════════════════════════
 // RENDER TABLA INVENTARIO
 // ═══════════════════════════════════════════════════════════════
@@ -1660,6 +1735,7 @@ async function eliminarItem(id) {
 // ═══════════════════════════════════════════════════════════════
 function actualizarInvStats() {
   const hoy = new Date().toISOString().slice(0,10);
+  const invReal = inventario.filter(i => !i.nombre.startsWith('[Categoría]'));
   document.getElementById('inv-stat-items').textContent    = inventario.length;
   document.getElementById('inv-stat-disp').textContent     = inventario.reduce((s,i)=>s+i.disponible, 0);
   document.getElementById('inv-stat-entradas').textContent = movimientos.filter(m=>m.tipo==='entrada'&&m.fecha===hoy).reduce((s,m)=>s+m.cantidad,0);
@@ -1667,6 +1743,7 @@ function actualizarInvStats() {
   poblarCatFilter();
   poblarSelectItems();
   poblarSelectCat();
+  poblarCatEntrega();
 }
 
 function poblarCatFilter() {
