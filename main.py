@@ -84,6 +84,7 @@ class Inventario(Base):
     marca          = Column(String(80))
     modelo         = Column(String(120))
     descripcion    = Column(Text)
+    icono          = Column(String(10), default='📦')
     created_at     = Column(DateTime, default=datetime.utcnow)
     activos        = relationship("Activo",    back_populates="inventario", cascade="all, delete-orphan")
     movimientos    = relationship("Movimiento",back_populates="inventario", cascade="all, delete-orphan")
@@ -360,6 +361,7 @@ def listar_inventario(
             "id": inv.id, "nombre": inv.nombre, "categoria": inv.categoria,
             "requiere_serial": inv.requiere_serial, "marca": inv.marca,
             "modelo": inv.modelo, "descripcion": inv.descripcion,
+            "icono": inv.icono or '📦',
             "created_at": inv.created_at.isoformat(),
         }
         if inv.requiere_serial:
@@ -381,12 +383,13 @@ def crear_inventario(
     marca:           Optional[str] = Form(None),
     modelo:          Optional[str] = Form(None),
     descripcion:     Optional[str] = Form(None),
+    icono:           Optional[str] = Form('📦'),
     db: Session = Depends(get_db)
 ):
     inv = Inventario(
         nombre=nombre, categoria=categoria, requiere_serial=requiere_serial,
         stock=stock if not requiere_serial else 0,
-        marca=marca, modelo=modelo, descripcion=descripcion
+        marca=marca, modelo=modelo, descripcion=descripcion, icono=icono
     )
     db.add(inv); db.commit(); db.refresh(inv)
     return inv
